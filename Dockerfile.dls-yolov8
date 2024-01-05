@@ -1,0 +1,42 @@
+#
+# Copyright (C) 2023-2024 Intel Corporation.
+#
+#
+# -----------------------------------------------------------
+
+ARG BASE_IMAGE=snake7gun/dlstreamer-yolov8-2023.0
+FROM $BASE_IMAGE as release
+
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+WORKDIR /
+
+# Install dependencies
+ARG BUILD_DEPENDENCIES="cmake build-essential git-gui python3 python3-pip clang wget curl vim"
+RUN apt -y update && \
+    apt install -y ${BUILD_DEPENDENCIES} && \
+    rm -rf /var/lib/apt/lists/* && rm -rf /tmp/*
+
+# Copy Vision-Checkout reference sources
+RUN git clone https://github.com/gsilva2016/vision-self-checkout
+RUN cd vision-self-checkout; git checkout intel-devcloud;
+
+RUN mkdir -p /app/dlstreamer/models/yolov8
+RUN touch /app/dlstreamer/models/yolov8/download_yolov8_ir_model_here.txt
+COPY yolo_efficientnet*.sh /app/dlstreamer
+COPY yolov8_efficientnet*.sh /app/dlstreamer
+RUN cp -R vision-self-checkout/download_models/ /tmp
+RUN cd /tmp/download_models/; ./modelDownload.sh --refresh; cp -R /tmp/configs/dlstreamer/models/2022/* /app/dlstreamer/models/
+COPY yolov8_ensemble/models/yolov8/1/yolov8n-int8-416.xml /app/dlstreamer/models/yolov8/yolov8n-int8.xml
+COPY yolov8_ensemble/models/yolov8/1/yolov8n-int8-416.bin /app/dlstreamer/models/yolov8/yolov8n-int8.bin
+
+WORKDIR /app/dlstreamer
+
+# Sample videos go here
+#RUN wget -O ./sample-video.mp4 https://www.pexels.com/video/4465029/download/
+
+# source /home/dlstreamer/dlstreamer_gst/scripts/setup_env.sh
+# ./yolov8n_efficientnet.sh or ./yolov8n_efficientnet_dual.sh
+
